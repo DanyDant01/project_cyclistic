@@ -263,19 +263,18 @@ Business logic dictates that ride_id column must be unique. Therefore, check if 
 <summary>Code: Check Duplicate ride_id</summary>
 
 ```sql
-WITH duplicates AS 
-(
-SELECT
-ride_id,
-mrowid,
-started_at,
-ended_at,
-start_station_id,
-start_station_name,
-end_station_id,
-end_station_name,
-ROW_NUMBER() OVER(PARTITION BY ride_id) AS row_num
-FROM combined_yearly
+WITH duplicates AS (
+    SELECT
+    ride_id,
+    mrowid,
+    started_at,
+    ended_at,
+    start_station_id,
+    start_station_name,
+    end_station_id,
+    end_station_name,
+    ROW_NUMBER() OVER(PARTITION BY ride_id) AS row_num
+    FROM combined_yearly
 )
 SELECT *
 FROM duplicates
@@ -296,23 +295,22 @@ WHERE row_num > 1
 <summary>Code: Delete Duplicate</summary>
 
 ```sql
-WITH duplicates AS 
-(
-SELECT
-ride_id,
-mrowid,
-started_at,
-ended_at,
-start_station_id,
-start_station_name,
-end_station_id,
-end_station_name,
-ROW_NUMBER() OVER(PARTITION BY ride_id) AS row_num
-FROM combined_yearly
+WITH duplicates AS (
+    SELECT
+    ride_id,
+    mrowid,
+    started_at,
+    ended_at,
+    start_station_id,
+    start_station_name,
+    end_station_id,
+    end_station_name,
+    ROW_NUMBER() OVER(PARTITION BY ride_id) AS row_num
+    FROM combined_yearly
 ), only_duplicate_rows AS (
-SELECT mrowid
-FROM duplicates
-WHERE row_num > 1
+    SELECT mrowid
+    FROM duplicates
+    WHERE row_num > 1
 )
 DELETE FROM combined_yearly
 WHERE mrowid IN (SELECT mrowid FROM only_duplicate_rows);
@@ -396,7 +394,9 @@ DATETIME data type does not permit NULL values. Additionaly, column enforces NO-
 <summary>Code: Searching for default value</summary>
 
 ```sql
-SELECT started_at, COUNT(*) AS date_count
+SELECT 
+started_at, 
+COUNT(*) AS date_count
 FROM combined_yearly
 GROUP BY started_at
 ORDER BY date_count DESC
@@ -475,20 +475,20 @@ Counting objects of interest to anchor these numbers and compare against after d
 -- Calculating combined unique IDs
 SELECT
 COUNT(*) AS total_station_ids
-FROM
- (SELECT start_station_id AS stationid FROM combined_yearly
+FROM (
+    SELECT start_station_id AS stationid FROM combined_yearly
     UNION
     SELECT end_station_id AS stationid FROM combined_yearly
-    ) AS all_unique_IDs;
+) AS all_unique_IDs;
 
 -- Calculating combined unique names
-    SELECT
+SELECT
 COUNT(*) AS total_station_names
-FROM
- (SELECT start_station_name AS stationname FROM combined_yearly
+FROM (
+    SELECT start_station_name AS stationname FROM combined_yearly
     UNION
     SELECT end_station_name AS stationname FROM combined_yearly
-    ) AS all_unique_names;
+) AS all_unique_names;
 ```
 
 </details>
@@ -607,7 +607,10 @@ ids_with_multiple_names AS (
     GROUP BY station_id
     HAVING COUNT(DISTINCT station_name) > 1
 )
-SELECT station_id, station_name, COUNT(*) AS occurrence
+SELECT 
+station_id, 
+station_name, 
+COUNT(*) AS occurrence
 FROM combined
 GROUP BY station_id, station_name
 HAVING station_id IN (SELECT station_id FROM ids_with_multiple_names)
@@ -874,10 +877,14 @@ Check all records where there are NULL station_name & station_id, but non-NULL c
 ```sql
 UPDATE distinct_ends_with_coords_v2 t1
 JOIN (
-    SELECT end_station_id, end_station_name, end_lat, end_lng
+    SELECT 
+    end_station_id, 
+    end_station_name, 
+    end_lat, 
+    end_lng
     FROM distinct_ends_with_coords_v2
     WHERE end_station_name IS NOT NULL 
-      AND end_station_id IS NOT NULL
+    AND end_station_id IS NOT NULL
     GROUP BY end_station_id, end_station_name, end_lat, end_lng
     HAVING COUNT(*) = 1  -- Unambiguous match
 ) t2
@@ -1050,27 +1057,27 @@ Rerunning previous check for NON-NULL station name & id combinations have >1 set
 SELECT 
 SUM(occurrence) AS total_impact
 FROM (
-SELECT
+    SELECT
     end_station_name,
     end_station_id,
     end_lat,
     end_lng,
     occurrence,
     ROW_NUMBER() OVER (PARTITION BY end_station_name, end_station_id ORDER BY occurrence DESC) AS ranking
-FROM (
-SELECT 
-    t1.end_station_name, 
-    t1.end_station_id, 
-    t1.end_lat, 
-    t1.end_lng, 
-    t1.occurrence
-FROM distinct_ends_with_coords_occurrences t1
-JOIN ends_with_multiple_coords_v2 t2
-    ON t1.end_station_name = t2.end_station_name
-    AND t1.end_station_id = t2.end_station_id
-GROUP BY t1.end_station_name, t1.end_station_id, t1.end_lat, t1.end_lng, t1.occurrence
-ORDER BY t1.end_station_name, t1.end_station_id, t1.occurrence DESC
-) AS impact_assessment
+    FROM (
+        SELECT 
+        t1.end_station_name, 
+        t1.end_station_id, 
+        t1.end_lat, 
+        t1.end_lng, 
+        t1.occurrence
+        FROM distinct_ends_with_coords_occurrences t1
+        JOIN ends_with_multiple_coords_v2 t2
+        ON t1.end_station_name = t2.end_station_name
+        AND t1.end_station_id = t2.end_station_id
+        GROUP BY t1.end_station_name, t1.end_station_id, t1.end_lat, t1.end_lng, t1.occurrence
+        ORDER BY t1.end_station_name, t1.end_station_id, t1.occurrence DESC
+    ) AS impact_assessment
 ) AS rankings
 WHERE ranking > 1;
 ```
@@ -1273,24 +1280,24 @@ Impact assessment for IDs with >1 name associated.
 
 ```sql
 WITH ids_with_multiple_names AS (
-SELECT 
-end_station_id,
-COUNT(*) AS names_associated
-FROM distinct_ends_with_coords_v2
-GROUP BY end_station_id
-HAVING COUNT(DISTINCT end_station_name) > 1
-ORDER BY names_associated DESC
+    SELECT 
+    end_station_id,
+    COUNT(*) AS names_associated
+    FROM distinct_ends_with_coords_v2
+    GROUP BY end_station_id
+    HAVING COUNT(DISTINCT end_station_name) > 1
+    ORDER BY names_associated DESC
 ), occurrence_count AS (
-SELECT 
-end_station_id, 
-end_station_name,
-end_lat,
-end_lng,
-COUNT(*) AS occurrence
-FROM combined_yearly
-GROUP BY end_station_id, end_station_name, end_lat, end_lng
-HAVING end_station_id IN (SELECT end_station_id FROM ids_with_multiple_names)
-ORDER BY end_station_id, occurrence DESC
+    SELECT 
+    end_station_id, 
+    end_station_name,
+    end_lat,
+    end_lng,
+    COUNT(*) AS occurrence
+    FROM combined_yearly
+    GROUP BY end_station_id, end_station_name, end_lat, end_lng
+    HAVING end_station_id IN (SELECT end_station_id FROM ids_with_multiple_names)
+    ORDER BY end_station_id, occurrence DESC
 )
 SELECT
 SUM(occurrence) AS impact_assessment
@@ -1312,33 +1319,33 @@ Now rank those records based on occurrence to check for merging potential.
 
 ```sql
 WITH ids_with_multiple_names AS (
-SELECT 
-end_station_id,
-COUNT(*) AS names_associated
-FROM distinct_ends_with_coords_v2
-GROUP BY end_station_id
-HAVING COUNT(DISTINCT end_station_name) > 1
-ORDER BY names_associated DESC
+    SELECT 
+    end_station_id,
+    COUNT(*) AS names_associated
+    FROM distinct_ends_with_coords_v2
+    GROUP BY end_station_id
+    HAVING COUNT(DISTINCT end_station_name) > 1
+    ORDER BY names_associated DESC
 ), occurrence_count AS (
-SELECT 
-end_station_id, 
-end_station_name,
-end_lat,
-end_lng,
-COUNT(*) AS occurrence
-FROM combined_yearly
-GROUP BY end_station_id, end_station_name, end_lat, end_lng
-HAVING end_station_id IN (SELECT end_station_id FROM ids_with_multiple_names)
-ORDER BY end_station_id, occurrence DESC
+    SELECT 
+    end_station_id, 
+    end_station_name,
+    end_lat,
+    end_lng,
+    COUNT(*) AS occurrence
+    FROM combined_yearly
+    GROUP BY end_station_id, end_station_name, end_lat, end_lng
+    HAVING end_station_id IN (SELECT end_station_id FROM ids_with_multiple_names)
+    ORDER BY end_station_id, occurrence DESC
 ), idswithmultplnames_occurencerank AS (
-SELECT
-end_station_id,
-end_station_name,
-end_lat,
-end_lng,
-occurrence,
-RANK() OVER (PARTITION BY end_station_id ORDER BY occurrence DESC) AS ranking
-FROM occurrence_count
+    SELECT
+    end_station_id,
+    end_station_name,
+    end_lat,
+    end_lng,
+    occurrence,
+    RANK() OVER (PARTITION BY end_station_id ORDER BY occurrence DESC) AS ranking
+    FROM occurrence_count
 )
 SELECT 
 SUM(occurrence) AS rank_1_impact
@@ -1383,33 +1390,33 @@ Similar approach. Impact Assessment for Names with >1 IDs associated.
 
 ```sql
 WITH names_with_multiple_ids AS (
-SELECT 
-end_station_name,
-COUNT(*) AS ids_associated
-FROM distinct_ends_with_coords_v2
-GROUP BY end_station_name
-HAVING COUNT(DISTINCT end_station_id) > 1
-ORDER BY ids_associated DESC
+    SELECT 
+    end_station_name,
+    COUNT(*) AS ids_associated
+    FROM distinct_ends_with_coords_v2
+    GROUP BY end_station_name
+    HAVING COUNT(DISTINCT end_station_id) > 1
+    ORDER BY ids_associated DESC
 ), occurrence_count AS (
-SELECT 
-end_station_id, 
-end_station_name,
-end_lat,
-end_lng,
-COUNT(*) AS occurrence
-FROM combined_yearly
-GROUP BY end_station_id, end_station_name, end_lat, end_lng
-HAVING end_station_name IN (SELECT end_station_name FROM names_with_multiple_ids)
-ORDER BY end_station_name, occurrence DESC
+    SELECT 
+    end_station_id, 
+    end_station_name,
+    end_lat,
+    end_lng,
+    COUNT(*) AS occurrence
+    FROM combined_yearly
+    GROUP BY end_station_id, end_station_name, end_lat, end_lng
+    HAVING end_station_name IN (SELECT end_station_name FROM names_with_multiple_ids)
+    ORDER BY end_station_name, occurrence DESC
 ), nameswithmultplids_occurencerank AS (
-SELECT
-end_station_id,
-end_station_name,
-end_lat,
-end_lng,
-occurrence,
-RANK() OVER (PARTITION BY end_station_name ORDER BY occurrence DESC) AS ranking
-FROM occurrence_count
+    SELECT
+    end_station_id,
+    end_station_name,
+    end_lat,
+    end_lng,
+    occurrence,
+    RANK() OVER (PARTITION BY end_station_name ORDER BY occurrence DESC) AS ranking
+    FROM occurrence_count
 )
 SELECT
 SUM(occurrence) AS total_impact
@@ -1463,8 +1470,8 @@ START TRANSACTION;
 
 WITH ranked_duplicates AS (
     SELECT 
-        idd_column,  -- Unique identifier for each row
-        ROW_NUMBER() OVER (PARTITION BY end_station_name, end_station_id, end_lat, end_lng ORDER BY end_station_id) AS rownum
+    idd_column,
+    ROW_NUMBER() OVER (PARTITION BY end_station_name, end_station_id, end_lat, end_lng ORDER BY end_station_id) AS rownum
     FROM distinct_ends_with_coords_v2
 )
 DELETE FROM distinct_ends_with_coords_v2
@@ -1517,9 +1524,9 @@ CREATE TABLE first_null_update AS (
     t2.end_lng AS lng_to_update
     FROM distinct_ends_with_coords_v2 t1
     JOIN distinct_ends_with_coords_v2 t2
-ON (ABS(t1.end_lat - t2.end_lat) <= 0.0002) AND (ABS(t1.end_lng - t2.end_lng) <= 0.0002)
-WHERE t1.end_station_name IS NOT NULL 
-      AND t2.end_station_id IS NULL
+    ON (ABS(t1.end_lat - t2.end_lat) <= 0.0002) AND (ABS(t1.end_lng - t2.end_lng) <= 0.0002)
+    WHERE t1.end_station_name IS NOT NULL 
+    AND t2.end_station_id IS NULL
 ) AS iteration1;
 ```
 
@@ -1534,7 +1541,8 @@ WHERE t1.end_station_name IS NOT NULL
 UPDATE distinct_ends_with_coords_v2 t1
 JOIN first_null_update t2
 ON t2.lat_to_update = t1.end_lat AND t2.lng_to_update = t1.end_lng
-SET t1.end_station_name = t2.end_station_name,
+SET 
+t1.end_station_name = t2.end_station_name,
 t1.end_station_id = t2.end_station_id
 WHERE t1.end_station_name IS NULL AND t1.end_station_id IS NULL;
 
@@ -1560,19 +1568,21 @@ While end_stations were updated simulatenously in both tables for the most part,
 -- update by ID first
 UPDATE combined_yearly t1
 JOIN distinct_ends_with_coords_v2 t2
-    ON t1.end_station_id = t2.end_station_id
-SET t1.end_station_name = t2.end_station_name,
-    t1.end_lat = t2.end_lat,
-    t1.end_lng = t2.end_lng
+ON t1.end_station_id = t2.end_station_id
+SET 
+t1.end_station_name = t2.end_station_name,
+t1.end_lat = t2.end_lat,
+t1.end_lng = t2.end_lng
 WHERE t1.end_station_id IS NOT NULL;
 
 -- then update by name
 UPDATE combined_yearly t1
 JOIN distinct_ends_with_coords_v2 t2
-    ON t1.end_station_name = t2.end_station_name
-SET t1.end_station_id = t2.end_station_id,
-    t1.end_lat = t2.end_lat,
-    t1.end_lng = t2.end_lng
+ON t1.end_station_name = t2.end_station_name
+SET 
+t1.end_station_id = t2.end_station_id,
+t1.end_lat = t2.end_lat,
+t1.end_lng = t2.end_lng
 WHERE t1.end_station_name IS NOT NULL;
 ```
 
@@ -1987,11 +1997,11 @@ FROM combined_yearly;
 SELECT
 AVG(trip_duration) AS median_duration
 FROM (
- SELECT trip_duration, 
- ROW_NUMBER() OVER (ORDER BY trip_duration) AS row_num, -- partition by usertype for user-specific stats
- COUNT(*) OVER () AS total_rows
-  FROM combined_yearly
-  WHERE trip_duration > 60 -- remove super short trips (likely erroneous)
+    SELECT trip_duration, 
+    ROW_NUMBER() OVER (ORDER BY trip_duration) AS row_num, -- partition by usertype for user-specific stats
+    COUNT(*) OVER () AS total_rows
+    FROM combined_yearly
+    WHERE trip_duration > 60 -- remove super short trips (likely erroneous)
 ) AS derived
 WHERE row_num IN (FLOOR((total_rows + 1)/2), CEIL((total_rows + 1)/2));
 ```
@@ -2074,29 +2084,29 @@ First, calculate standard 4 equal quartile ditribution as per below query:
 ```sql
 WITH duration_ranges AS (
     SELECT 
-        trip_duration,
-        COUNT(*) OVER() AS total_trips,
-        PERCENT_RANK() OVER (ORDER BY trip_duration) AS percentile
+    trip_duration,
+    COUNT(*) OVER() AS total_trips,
+    PERCENT_RANK() OVER (ORDER BY trip_duration) AS percentile
     FROM combined_yearly
     WHERE trip_duration >= 60
 ),
 quartiles AS (
     SELECT
-        trip_duration,
-        CASE 
-            WHEN percentile <= 0.25 THEN '0-25%'
-            WHEN percentile <= 0.50 THEN '26-50%'
-            WHEN percentile <= 0.75 THEN '51-75%'
-            ELSE '76-100%'
-        END AS quartile
+    trip_duration,
+    CASE 
+        WHEN percentile <= 0.25 THEN '0-25%'
+        WHEN percentile <= 0.50 THEN '26-50%'
+        WHEN percentile <= 0.75 THEN '51-75%'
+        ELSE '76-100%'
+    END AS quartile
     FROM duration_ranges
 )
 SELECT
-    quartile,
-    MIN(trip_duration) AS min_duration,
-    MAX(trip_duration) AS max_duration,
-    ROUND(STDDEV(trip_duration), 0) AS spread,
-    COUNT(*) AS trips_in_quartile
+quartile,
+MIN(trip_duration) AS min_duration,
+MAX(trip_duration) AS max_duration,
+ROUND(STDDEV(trip_duration), 0) AS spread,
+COUNT(*) AS trips_in_quartile
 FROM quartiles
 GROUP BY quartile
 ORDER BY quartile; 
@@ -2127,34 +2137,34 @@ the abnormally big spread of the data within 4th quartile. Splitting last quarti
 
 WITH duration_ranges AS (
     SELECT 
-        trip_duration,
-        COUNT(*) OVER() AS total_trips,
-        PERCENT_RANK() OVER (ORDER BY trip_duration) AS percentile
+    trip_duration,
+    COUNT(*) OVER() AS total_trips,
+    PERCENT_RANK() OVER (ORDER BY trip_duration) AS percentile
     FROM combined_yearly
     WHERE trip_duration >= 1056 --adjusted duration filter to lower limit of last quartile from previous query
 ),
 quartiles AS (
     SELECT
-        trip_duration,
-        CASE 
-            WHEN percentile <= 0.25 THEN '0-25%'
-            WHEN percentile <= 0.50 THEN '26-50%'
-            WHEN percentile <= 0.75 THEN '51-75%'
-            WHEN percentile <= 0.85 THEN '76-85%'
-            WHEN percentile <= 0.95 THEN '86-95%'
-            WHEN percentile <= 0.97 THEN '96-97%'
-            WHEN percentile <= 0.98 THEN '97-98%'
-            WHEN percentile <= 0.99 THEN '98-99%'
-            ELSE '99-100%'
-        END AS quartile
+    trip_duration,
+    CASE 
+        WHEN percentile <= 0.25 THEN '0-25%'
+        WHEN percentile <= 0.50 THEN '26-50%'
+        WHEN percentile <= 0.75 THEN '51-75%'
+        WHEN percentile <= 0.85 THEN '76-85%'
+        WHEN percentile <= 0.95 THEN '86-95%'
+        WHEN percentile <= 0.97 THEN '96-97%'
+        WHEN percentile <= 0.98 THEN '97-98%'
+        WHEN percentile <= 0.99 THEN '98-99%'
+        ELSE '99-100%'
+    END AS quartile
     FROM duration_ranges
 )
 SELECT
-    quartile,
-    MIN(trip_duration) AS min_duration,
-    MAX(trip_duration) AS max_duration,
-    ROUND(STDDEV(trip_duration), 0) AS spread,
-    COUNT(*) AS trips_in_quartile
+quartile,
+MIN(trip_duration) AS min_duration,
+MAX(trip_duration) AS max_duration,
+ROUND(STDDEV(trip_duration), 0) AS spread,
+COUNT(*) AS trips_in_quartile
 FROM quartiles
 GROUP BY quartile
 ORDER BY quartile; 
@@ -2316,21 +2326,21 @@ By usertype, day, season, month, day type and combinations of each.
 
 ```sql
 WITH median_calculation AS (
- SELECT 
- trip_duration,
- trip_day,
- member_casual,
- ROW_NUMBER() OVER (PARTITION BY trip_day, member_casual ORDER BY trip_duration) AS row_num,
- --PARTITION BY usertype and/or trip_day and/or trip_season and/or day_type
- COUNT(*) OVER (PARTITION BY trip_day, member_casual) AS total_rows
- FROM combined_yearly
- WHERE trip_duration > 60
- -- remove super short trips (likely erroneous)
+    SELECT 
+    trip_duration,
+    trip_day,
+    member_casual,
+    ROW_NUMBER() OVER (PARTITION BY trip_day, member_casual ORDER BY trip_duration) AS row_num,
+    --PARTITION BY usertype and/or trip_day and/or trip_season and/or day_type
+    COUNT(*) OVER (PARTITION BY trip_day, member_casual) AS total_rows
+    FROM combined_yearly
+    WHERE trip_duration > 60
+    -- remove super short trips (likely erroneous)
 )
 SELECT
- member_casual,
- trip_day,
- AVG(trip_duration) AS median_duration
+member_casual,
+trip_day,
+AVG(trip_duration) AS median_duration
 FROM median_calculation
 WHERE row_num IN (FLOOR((total_rows + 1)/2), CEIL((total_rows + 1)/2))
 GROUP BY trip_day, member_casual
@@ -2350,19 +2360,19 @@ By usertype, day, season, month, day type and combinations of each.
 
 ```sql
 WITH mean_calculation AS (
- SELECT 
- trip_duration,
- trip_day,
- ROW_NUMBER() OVER (PARTITION BY trip_day ORDER BY trip_duration) AS row_num, --PARTITION BY member_casual and/or trip_day and/or trip_season
- COUNT(*) OVER (PARTITION BY trip_day) AS total_trips
- FROM combined_yearly
- WHERE trip_duration > 60
+    SELECT 
+    trip_duration,
+    trip_day,
+    ROW_NUMBER() OVER (PARTITION BY trip_day ORDER BY trip_duration) AS row_num, --PARTITION BY member_casual and/or trip_day and/or trip_season
+    COUNT(*) OVER (PARTITION BY trip_day) AS total_trips
+    FROM combined_yearly
+    WHERE trip_duration > 60
 )
 SELECT 
- trip_day,
- member_casual,
- AVG(trip_duration) AS median_duration,
- total_trips
+trip_day,
+member_casual,
+AVG(trip_duration) AS median_duration,
+total_trips
 FROM mean_calculation
 GROUP BY trip_day
 ORDER BY median_duration;
@@ -2627,11 +2637,11 @@ WHERE trip_duration > 60
 GROUP BY start_hour, trip_day, trip_season
 ORDER BY trip_season, trip_day, started_trips DESC;
 
--- and with percentage of total if necessary
+-- and with percentage of total
 SELECT
-    start_hour,
-    COUNT(*) AS started_trips,
-    CONCAT(ROUND((COUNT(*) / SUM(COUNT(*)) OVER ()) * 100, 1),'%') AS percentage_of_total
+start_hour,
+COUNT(*) AS started_trips,
+CONCAT(ROUND((COUNT(*) / SUM(COUNT(*)) OVER ()) * 100, 1),'%') AS percentage_of_total
 FROM combined_yearly
 WHERE trip_duration > 60
 GROUP BY start_hour
@@ -2651,42 +2661,41 @@ then partition by usertype.
 ```sql
 -- most popular station overall
 CREATE TEMPORARY TABLE stations AS (
-SELECT
-usertype,
-station_name,
-station_id,
-latitude,
-longitude,
-SUM(trips_per_station_usertype) AS total_trips
-FROM (
-SELECT
-member_casual AS usertype,
-start_station_name AS station_name,
-start_station_id AS station_id,
-start_lat AS latitude,
-start_lng AS longitude,
-COUNT(*) AS trips_per_station_usertype
-FROM combined_yearly
-WHERE trip_duration > 60 AND start_station_id IS NOT NULL AND start_station_name IS NOT NULL
-GROUP BY usertype, station_name, station_id, latitude, longitude
+    SELECT
+    usertype,
+    station_name,
+    station_id,
+    latitude,
+    longitude,
+    SUM(trips_per_station_usertype) AS total_trips
+    FROM (
+        SELECT
+        member_casual AS usertype,
+        start_station_name AS station_name,
+        start_station_id AS station_id,
+        start_lat AS latitude,
+        start_lng AS longitude,
+        COUNT(*) AS trips_per_station_usertype
+        FROM combined_yearly
+        WHERE trip_duration > 60 AND start_station_id IS NOT NULL AND start_station_name IS NOT NULL
+        GROUP BY usertype, station_name, station_id, latitude, longitude
 
-UNION ALL
+    UNION ALL
 
 
-SELECT
-member_casual AS usertype,
-end_station_name AS station_name,
-end_station_id AS station_id,
-end_lat AS latitude,
-end_lng AS longitude,
-COUNT(*) AS trips_per_station_usertype
-FROM combined_yearly
-WHERE trip_duration > 60 AND end_station_id IS NOT NULL AND end_station_name IS NOT NULL 
-GROUP BY usertype, station_name, station_id, latitude, longitude
-
-ORDER BY trips_per_station_usertype DESC
-LIMIT 150) AS interimstations
-
+    SELECT
+    member_casual AS usertype,
+    end_station_name AS station_name,
+    end_station_id AS station_id,
+    end_lat AS latitude,
+    end_lng AS longitude,
+    COUNT(*) AS trips_per_station_usertype
+    FROM combined_yearly
+    WHERE trip_duration > 60 AND end_station_id IS NOT NULL AND end_station_name IS NOT NULL 
+    GROUP BY usertype, station_name, station_id, latitude, longitude
+    ORDER BY trips_per_station_usertype DESC
+    LIMIT 150
+    ) AS interimstations
 GROUP BY usertype, station_id, station_name, latitude, longitude
 ORDER BY total_trips DESC);
 ```
@@ -2709,16 +2718,16 @@ longitude,
 total_trips,
 ranking
 FROM (
-SELECT
-usertype, 
-station_name,
-latitude,
-longitude,
-total_trips,
-RANK() OVER(PARTITION BY usertype ORDER BY total_trips DESC) AS ranking
-FROM stations) AS derived
-WHERE ranking <= 10
-ORDER BY usertype;
+    SELECT
+    usertype, 
+    station_name,
+    latitude,
+    longitude,
+    total_trips,
+    RANK() OVER(PARTITION BY usertype ORDER BY total_trips DESC) AS ranking
+    FROM stations) AS derived
+    WHERE ranking <= 10
+    ORDER BY usertype;
 ```
 
 </details>
@@ -2762,21 +2771,22 @@ WHERE trip_duration > 60 AND (start_station_name, end_station_name) IN (SELECT s
 **Median:**
 
 ```sql
-WITH median_calculation AS (SELECT 
- trip_duration,
- member_casual,
- start_station_name,
- end_station_name,
- ROW_NUMBER() OVER (PARTITION BY member_casual, start_station_name, end_station_name ORDER BY trip_duration) AS row_num,
- COUNT(*) OVER (PARTITION BY member_casual, start_station_name, end_station_name) AS total_rows
- FROM popular_route_trips
+WITH median_calculation AS (
+    SELECT 
+    trip_duration,
+    member_casual,
+    start_station_name,
+    end_station_name,
+    ROW_NUMBER() OVER (PARTITION BY member_casual, start_station_name, end_station_name ORDER BY trip_duration) AS row_num,
+    COUNT(*) OVER (PARTITION BY member_casual, start_station_name, end_station_name) AS total_rows
+    FROM popular_route_trips
 )
 SELECT
- member_casual,
- start_station_name,
- end_station_name,
- total_rows AS trips_per_route,
- ROUND(AVG(trip_duration), 0) AS median_duration
+member_casual,
+start_station_name,
+end_station_name,
+total_rows AS trips_per_route,
+ROUND(AVG(trip_duration), 0) AS median_duration
 FROM median_calculation
 WHERE row_num IN (FLOOR((total_rows + 1)/2), CEIL((total_rows + 1)/2))
 GROUP BY member_casual, start_station_name, end_station_name
@@ -2788,20 +2798,21 @@ ORDER BY member_casual, trips_per_route DESC;
 With & without usertype (member_casual)
 
 ```sql
-WITH mean_calculation AS (SELECT 
- member_casual,
- trip_duration,
- start_station_name,
- end_station_name,
- COUNT(*) OVER (PARTITION BY member_casual, start_station_name, end_station_name) AS total_rows
- FROM popular_route_trips
+WITH mean_calculation AS (
+    SELECT 
+    member_casual,
+    trip_duration,
+    start_station_name,
+    end_station_name,
+    COUNT(*) OVER (PARTITION BY member_casual, start_station_name, end_station_name) AS total_rows
+    FROM popular_route_trips
 )
 SELECT
- member_casual,
- start_station_name,
- end_station_name,
- total_rows AS trips_per_route,
- ROUND(AVG(trip_duration), 0) AS mean_duration
+member_casual,
+start_station_name,
+end_station_name,
+total_rows AS trips_per_route,
+ROUND(AVG(trip_duration), 0) AS mean_duration
 FROM mean_calculation
 GROUP BY member_casual, start_station_name, end_station_name
 ORDER BY member_casual, trips_per_route DESC;
